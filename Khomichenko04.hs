@@ -9,9 +9,15 @@ type Code = String
 data Move = Move Code Int Int
           deriving (Show, Eq)
 
+convertStringToList :: Code -> [String]
+convertStringToList cd = map (\c -> [c]) (cd)
+
 -- Задача 1 -----------------------------------------
 exactMatches :: Code -> Code -> Int
-exactMatches = undefined
+exactMatches cd att = length (
+    filter(\el -> fst el == (convertStringToList(att) !! (snd el)))
+      (zip (convertStringToList (cd)) [0..])
+  )
 
 -- Задача 2 -----------------------------------------
 countDigits :: Code -> [Int]
