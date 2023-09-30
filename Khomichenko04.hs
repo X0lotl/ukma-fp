@@ -21,15 +21,18 @@ exactMatches cd att = length (
 
 -- Задача 2 -----------------------------------------
 countDigits :: Code -> [Int]
-countDigits = undefined
+countDigits cd = map (\i -> length (filter (==show(i)) (convertStringToList(cd)))) [0..9]
 
 -- Задача 3 ----------------------------------------- 
 matches :: Code -> Code -> Int
-matches = undefined
- 
+matches cd att = sum (map (\el -> min (fst el) (snd el)) (zip (countDigits(cd)) (countDigits(att))))
+
 -- Задача 4 -----------------------------------------
 getMove :: Code -> Code -> Move
-getMove = undefined
+getMove secret guess = Move guess numBulls numCows
+  where
+    numBulls = exactMatches secret guess
+    numCows = (matches secret guess) - numBulls
 
 -- Задача 5 -----------------------------------------
 isConsistent :: Move -> Code -> Bool
