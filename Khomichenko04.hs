@@ -36,7 +36,10 @@ getMove secret guess = Move guess numBulls numCows
 
 -- Задача 5 -----------------------------------------
 isConsistent :: Move -> Code -> Bool
-isConsistent = undefined
+isConsistent (Move guess bulls cows) cd = bullsCount == bulls && cowsCount == cows
+  where
+    bullsCount = exactMatches guess cd
+    cowsCount = matches guess cd - bullsCount
 
 -- Задача 6 -----------------------------------------
 filterCodes :: Move -> [Code] -> [Code]
