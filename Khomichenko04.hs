@@ -43,13 +43,27 @@ isConsistent (Move guess bulls cows) cd = bullsCount == bulls && cowsCount == co
 
 -- Задача 6 -----------------------------------------
 filterCodes :: Move -> [Code] -> [Code]
-filterCodes = undefined
+filterCodes mv cdx = filter (\cd -> isConsistent mv cd) cdx
 
 -- Задача 7 -----------------------------------------
+extend :: [String] -> Int -> [String]
+extend cdx d = map (\cd -> show d ++ cd) cdx
+
 allCodes :: Int -> [Code]
-allCodes = undefined
-   
+allCodes n
+  | n <= 0 = []
+  | n == 1 = map show [0..9]
+  | otherwise = concatMap (extend (allCodes (n-1))) [0..9]
+
 -- Задача 8 -----------------------------------------
 solve :: Code -> [Move]
-solve = undefined
- 
+solve cd = recursiveCodeSolver cd (allCodes (length cd)) [Move (replicate (length cd) '0') 0 0]
+
+recursiveCodeSolver :: Code -> [Code] -> [Move] -> [Move]
+recursiveCodeSolver _ [] _ = []
+recursiveCodeSolver cd (x:xs) prevMoves
+    | correctGuess = newMove : recursiveCodeSolver cd (filterCodes newMove xs) (newMove : prevMoves)
+    | otherwise = recursiveCodeSolver cd (filterCodes newMove xs) (newMove : prevMoves)
+    where
+        newMove = getMove cd x
+        correctGuess = isConsistent newMove cd && not (newMove `elem` prevMoves)
