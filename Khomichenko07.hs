@@ -40,11 +40,11 @@ exchangeRow le i = let (x:xs) = le in le !! (i-1) : xs ++ [x]
 
 -- Задача 4.a -----------------------------------------
 forwardStep :: Row -> Linear -> Linear
-forwardStep = undefined
+forwardStep fs rs = map (\row -> tail (zipWith (-) row (map (\el -> el * (head row / head fs )) fs ))) rs
 
 -- Задача 4.b -----------------------------------------
 reverseStep :: Row -> Solution -> Solution
-reverseStep = undefined
+reverseStep
 
 -- Задача 5 -----------------------------------------
 gauss :: Linear -> Solution
