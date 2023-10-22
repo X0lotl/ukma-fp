@@ -20,19 +20,23 @@ isSimple :: Linear -> Bool
 isSimple le = all (\el -> length el == 1) le || length le == length (head le) - 1
 
 -- Задача 2.b -----------------------------------------
--- solveSimple :: Linear -> Solution
-solveSimple le = if isSimple le then 
-              if last (last le) == 0 then Just Nothing 
-              else Just (Just [ map (\el -> el) le ])
+solveSimple :: Linear -> Solution
+solveSimple le = if isSimple le then
+              if all (\el -> length el == 1) le && head (head le) /= head (last le)
+                  then Nothing 
+                else if any (\el -> any (==0) el) (le) then Just Nothing 
+                  else Just (Just [last (last (le))/head (head (le))] )
             else Nothing
 
 -- Задача 3.a -----------------------------------------
 findRow :: Linear -> Maybe Int
-findRow = undefined
+findRow le = case filter (\row -> head row /= 0) le of
+        [] -> Nothing
+        (x:_) -> Just (1 + length (takeWhile (/= x) le))
 
 -- Задача 3.b -----------------------------------------
 exchangeRow :: [a] -> Int -> [a]
-exchangeRow = undefined
+exchangeRow le i = let (x:xs) = le in le !! (i-1) : xs ++ [x]
 
 -- Задача 4.a -----------------------------------------
 forwardStep :: Row -> Linear -> Linear
