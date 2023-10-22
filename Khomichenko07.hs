@@ -20,8 +20,11 @@ isSimple :: Linear -> Bool
 isSimple le = all (\el -> length el == 1) le || length le == length (head le) - 1
 
 -- Задача 2.b -----------------------------------------
-solveSimple :: Linear -> Solution
-solveSimple = undefined
+-- solveSimple :: Linear -> Solution
+solveSimple le = if isSimple le then 
+              if last (last le) == 0 then Just Nothing 
+              else Just (Just [ map (\el -> el) le ])
+            else Nothing
 
 -- Задача 3.a -----------------------------------------
 findRow :: Linear -> Maybe Int
