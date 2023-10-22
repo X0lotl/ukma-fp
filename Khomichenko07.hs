@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
 module Khomichenko07 where 
 
+import Prelude
+
 type Linear   = [Row]
 type Row      = [Rational]
 type Solution = Maybe (Maybe Row)
@@ -9,12 +11,13 @@ type Solution = Maybe (Maybe Row)
 -- Система рівнянь має один розвязок     => Just(Just [Rational]) 
 
 -- Задача 1 -----------------------------------------
+
 testing :: Linear -> Row -> Bool
-testing = undefined
+testing le row = all (\(l, r) -> sum (zipWith (*) l row) == last l) (zip le row)
 
 -- Задача 2.a -----------------------------------------
 isSimple :: Linear -> Bool
-isSimple = undefined
+isSimple le = all (\el -> length el == 1) le || length le == length (head le) - 1
 
 -- Задача 2.b -----------------------------------------
 solveSimple :: Linear -> Solution
