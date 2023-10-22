@@ -1,18 +1,37 @@
 {-# OPTIONS_GHC -Wall #-}
-module HWC06 where
+module Khomichenko06 where
 
 import Data.Char(isDigit, digitToInt)
 
 -- Задача 1 -----------------------------------------
 analyseG :: String -> Bool 
-analyseG = undefined
+analyseG [] = False
+analyseG w = case s w of
+  Just rest -> case a rest of
+    Just [] -> False
+    _ -> True
+  _ -> True
 
 s :: String -> Maybe String
-s = undefined
+s ('a':rest) = case s rest of
+  Just rest' -> case match 'b' (Just rest') of
+    Just rest'' -> case a rest'' of
+      Just rest''' -> match 'a' (Just rest''')
+      _ -> Nothing
+    _ -> Nothing
+  _ -> Nothing
+s ('b':rest) = Just rest
+s _ = Nothing
 
 a :: String -> Maybe String
-a = undefined
-   
+a ('b':'a':rest) = case a rest of
+    Just rest' -> case match 'S' (Just rest') of
+      Just rest'' -> s rest''
+      _ -> Nothing
+    _ -> Nothing
+a ('a':rest) = Just rest
+a _ = Nothing
+
 -- Задача 2 ----------------------------------------
 balance :: String -> Bool
 balance = undefined
