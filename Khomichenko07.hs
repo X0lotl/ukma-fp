@@ -17,16 +17,31 @@ testing le row = all (\(l, r) -> sum (zipWith (*) l row) == last l) (zip le row)
 
 -- Задача 2.a -----------------------------------------
 isSimple :: Linear -> Bool
-isSimple le = all (\el -> length el == 1) le || length le == length (head le) - 1
+isSimple le =
+    all (\row -> length row == 1) le
+    ||
+    (
+      (length le == 1)
+      &&
+      (head (head le) /= 0)
+    )
 
 -- Задача 2.b -----------------------------------------
 solveSimple :: Linear -> Solution
-solveSimple le = if isSimple le then
-              if all (\el -> length el == 1) le && head (head le) /= head (last le)
-                  then Nothing 
-                else if any (\el -> any (==0) el) (le) then Just Nothing 
-                  else Just (Just [last (last (le))/head (head (le))] )
-            else Nothing
+solveSimple le =
+    if all (\row -> length row == 1) le
+      then
+        if all (\row -> head row == 0) le
+          then Just (Just [])
+        else Nothing
+    else
+      if length (head le) == 2
+        then Just (
+          Just [last (head le) / head (head le)]
+        )
+      else
+        Just Nothing
+
 
 -- Задача 3.a -----------------------------------------
 findRow :: Linear -> Maybe Int
@@ -36,19 +51,74 @@ findRow le = case filter (\row -> head row /= 0) le of
 
 -- Задача 3.b -----------------------------------------
 exchangeRow :: [a] -> Int -> [a]
-exchangeRow le i = let (x:xs) = le in le !! (i-1) : xs ++ [x]
+exchangeRow arr i =
+  if i == 1 then arr
+  else
+    (arr!!(i - 1)) : take (i - 2) (drop 1 arr)
+    ++
+    head arr : drop i arr
 
 -- Задача 4.a -----------------------------------------
 forwardStep :: Row -> Linear -> Linear
-forwardStep fs rs = map (\row -> tail (zipWith (-) row (map (\el -> el * (head row / head fs )) fs ))) rs
+forwardStep row le =
+  if head row == 0
+    then tail row : map tail le
+  else
+  map (
+    \m -> (
+      map (
+        \k -> (
+          ( (le!!m)!!k - ( head (le!!m) / head row ) * row!!k )
+          )
+      ) [1..(length row - 2)] ++ [ 
+        (last (le!!m)) - ( ( head (le!!m) / (head row) ) * (last row) )
+      ]
+    )
+  ) [0..(length le - 1)]
 
 -- Задача 4.b -----------------------------------------
-reverseStep :: Row -> Solution -> Solution
-reverseStep
+wrapSolution :: Solution -> (Row -> Row ) -> Solution
+wrapSolution solution fn =
+  case solution of
+    Nothing -> Nothing
+    Just justSolution ->
+      case justSolution of 
+        Nothing -> Just Nothing
+        Just [] -> Just Nothing
+        Just solutionRow -> Just (Just (fn solutionRow))
 
+reverseStep :: Row -> Solution -> Solution
+reverseStep row solution = 
+  wrapSolution solution (\solutionRow ->
+    (
+      ((last row) / (head row)) 
+      - sum (
+        map
+        (\(p, index) -> 
+          ( 
+            (row!!(index + 1)) / (head row)
+          )
+          * p 
+        )
+        (zip solutionRow [0..(length solutionRow - 1)]))
+    ) : solutionRow
+  )
 -- Задача 5 -----------------------------------------
+normalizeStep :: Linear -> Solution
+normalizeStep le =
+  reverseStep 
+    (head le)
+    (gauss (forwardStep (head le) (tail le)))
+
 gauss :: Linear -> Solution
-gauss = undefined
+gauss le = 
+  if isSimple le
+    then solveSimple le
+  else 
+    case (findRow le) of
+      Nothing -> normalizeStep le
+      Just index -> 
+        normalizeStep (exchangeRow le index)
 
 -------------------------------------------------------
 test1, test2, test3, test4 :: Linear
@@ -65,4 +135,3 @@ res1, res2, res3 :: Solution
 res1 = Just (Just row1) 
 res2 = Just Nothing
 res3 = Nothing
-
