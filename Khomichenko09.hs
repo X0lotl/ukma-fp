@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
-module HWC09 where
+module Khomichenko09 where
 
 import Data.List
 import Data.Tree
