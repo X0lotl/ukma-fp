@@ -29,6 +29,7 @@ unionV xs ys = xs ++ filter (`notElem` xs) ys
 -- Задача 1.d ----------------------------------------- 
 
 freeVars :: Term -> [String]
+freeVars :: Term -> [String]
 freeVars (Nmb _) = []
 freeVars (Var x) = [x]
 freeVars (App x y) = unionV (freeVars x) (freeVars y)
@@ -111,13 +112,10 @@ reduce (Abs x y) varN t =
 -- Задача 5 -----------------------------------------
 evalStep :: Term -> Contex -> Maybe Term
 evalStep (Nmb x) _ = Just (integerTerm x)
-evalStep (Var x) ctx =
-  maybe Nothing Just (lookup x ctx)
+evalStep (Var x) ctx = lookup x ctx
 evalStep (App (Abs x t1) t2) _ = Just (reduce t1 x t2)
 evalStep (App t1 t2) ctx =
-  case evalStep t1 ctx of
-    Just t1' -> Just (App t1' t2)
-    Nothing -> fmap (\t2' -> App t1 t2') (evalStep t2 ctx)
+  evalStep t1 ctx >>= \t1' -> Just (App t1' t2) <|> fmap (App t1) (evalStep t2 ctx)
 evalStep (Abs x t) ctx = fmap (Abs x) (evalStep t ctx)
 
 -- Задача 6 -----------------------------------------
@@ -129,39 +127,37 @@ eval n t ctx =
     Nothing -> Just (compress t)
 
 -- Задача 7 -----------------------------------------
-normalizeString :: String -> String
-normalizeString [] = []
-normalizeString (' ':' ':str) = normalizeString (' ':str)
-normalizeString (' ':')':str) = normalizeString (')':str)
-normalizeString (' ':'.':str) = normalizeString ('.':str)
-normalizeString ('.':' ':str) = normalizeString ('.':str)
-normalizeString (x:str) = x : normalizeString str
+normalize :: String -> String
+normalize [] = []
+normalize (' ':' ':str) = normalize (' ':str)
+normalize (' ':')':str) = normalize (')':str)
+normalize (' ':'.':str) = normalize ('.':str)
+normalize ('.':' ':str) = normalize ('.':str)
+normalize (x:str) = x : normalize str
 
 parseFirstVarName :: String -> String
 parseFirstVarName [] = []
-parseFirstVarName str =
-  if head str /= ' ' && head str /= '.'
-    then head str : parseFirstVarName (tail str)
-  else []
+parseFirstVarName (x:xs)
+  | x /= ' ' && x /= '.' = x : parseFirstVarName xs
+  | otherwise = []
 
+removeExtraSpaces :: String -> String
+removeExtraSpaces [] = []
+removeExtraSpaces str =
+  if head str == ' ' then
+    removeExtraSpaces (tail str)
+  else if last str == ' ' then
+    removeExtraSpaces (init str)
+  else str
+  
 parseVarTerm :: String -> Term
 parseVarTerm str = Var (parseFirstVarName str)
-
-intLength :: Int -> Int
-intLength val = go val 0
-  where
-    go 0 count = count
-    go val count = go (val `div` 10) (count + 1)
 
 parseNextDigit :: String -> Maybe Int
 parseNextDigit [] = Nothing
 parseNextDigit (x:xs)
   | isDigit x = Just (foldl (\acc d -> acc * 10 + digitToInt d) (digitToInt x) xs)
   | otherwise = Nothing
-
-parseNextDigitTerm :: String -> Maybe Term
-parseNextDigitTerm str =
-  maybe Nothing (\x -> Just (Nmb x)) (parseNextDigit str)
 
 findIndex' :: Eq a => [a] -> a -> Int -> Maybe Int
 findIndex' [] _ _ = Nothing
@@ -173,24 +169,17 @@ findIndex' list element currentIndex =
 findIndex :: Eq a => [a] -> a -> Maybe Int
 findIndex list element = findIndex' list element 0
 
-findNextBracket' :: String -> Int -> Maybe Int
-findNextBracket' [] _ = Nothing
+findNext' :: String -> Int -> Maybe Int
+findNext' [] _ = Nothing
+findNext' (')':_) 0 = Just 0
+findNext' ('(':str) depth = findNext' str (depth + 1) >>= (\x -> Just (x + 1))
+findNext' (')':str) depth
+  | depth == 0 = Just 0
+  | otherwise = findNext' str (depth - 1) >>= (\x -> Just (x + 1))
+findNext' (_:str) depth = findNext' str depth >>= (\x -> Just (x + 1))
 
-findNextBracket' ")" 0 = Just 0
-findNextBracket' (')':_) 0 = Just 0
-
-findNextBracket' ('(':str) depth = 
-  maybe Nothing (\x -> Just (x + 1)) (findNextBracket' str (depth + 1))
-
-findNextBracket' (')':str) depth = 
-  maybe Nothing (\x -> Just (x + 1)) (findNextBracket' str (depth - 1))
-
-findNextBracket' str depth = 
-  maybe Nothing (\x -> Just (x + 1)) (findNextBracket' (drop 1 str) depth)
-
-
-findNextBracket :: String -> Maybe Int
-findNextBracket str = findNextBracket' str 0
+findNext :: String -> Maybe Int
+findNext str = findNext' str 0
 
 splitBy :: Eq a => [a] -> a -> [[a]]
 splitBy [] _ = []
@@ -199,29 +188,13 @@ splitBy list element =
     take index list : splitBy (drop (index + 1) list) element
   ) (findIndex list element)
 
-trimStart :: String -> String
-trimStart [] = []
-trimStart str =
-  if head str == ' ' then
-    trimStart (tail str)
-  else str
-
-trimEnd :: String -> String
-trimEnd str = reverse (trimStart (reverse str))
-
-trim :: String -> String
-trim = trimStart . trimEnd
-
-joinWith :: [[a]] -> a -> [a]
-joinWith list separator =
-  foldl (\left right -> left ++ [separator] ++ right) [] list
-
-dropTrailingBrackets' :: String -> String
-dropTrailingBrackets' (')':str) = dropTrailingBrackets' str
-dropTrailingBrackets' str = str
 
 dropTrailingBrackets :: String -> String
 dropTrailingBrackets str = reverse (dropTrailingBrackets' (reverse str))
+  where
+    dropTrailingBrackets' :: String -> String
+    dropTrailingBrackets' (')':str) = dropTrailingBrackets' str
+    dropTrailingBrackets' str = str
 
 findNextApplicationIndex :: String -> Maybe Int
 findNextApplicationIndex ('(':rest) = 
@@ -231,87 +204,40 @@ findNextApplicationIndex ('(':rest) =
       else if head afterBracketStr == ' ' then
         Just (nextInnerAdjacentBracketIndex + 2)
       else Nothing
-  ) (findNextBracket rest)
-
+  ) (findNext rest)
 findNextApplicationIndex str =
   maybe Nothing (\nextSpaceIndex ->
     maybe (Just nextSpaceIndex) (\nextAdjacentBracketIndex ->
       if nextSpaceIndex < nextAdjacentBracketIndex then 
         Just nextSpaceIndex
       else Nothing
-    ) (findNextBracket str)
+    ) (findNext str)
   ) (findIndex str ' ')
 
-findRightestApplicationIndex :: String -> Maybe Int
-findRightestApplicationIndex str =
-  maybe Nothing (\nextApplicationIndex -> 
-    maybe (Just nextApplicationIndex) (\nextRightestApplicationIndex -> 
-      Just (nextApplicationIndex + 1 + nextRightestApplicationIndex)
-    ) (findRightestApplicationIndex (drop (nextApplicationIndex + 1) str))
-  ) (findNextApplicationIndex str)
+findAppIndexRight :: String -> Maybe Int
+findAppIndexRight str =
+  case findNextApplicationIndex str of
+    Nothing -> Nothing
+    Just nextApplicationIndex ->
+      case findAppIndexRight (drop (nextApplicationIndex + 1) str) of
+        Nothing -> Just nextApplicationIndex
+        Just nextRightestApplicationIndex -> Just (nextApplicationIndex + 1 + nextRightestApplicationIndex)
 
-parseApplication :: String -> Maybe Term
-parseApplication str = 
-  maybe Nothing (\rightestApplicationIndex -> 
-    maybe Nothing (\rightApplicationTerm -> 
-      maybe Nothing (\leftApplicationTerm -> 
-        Just (
-          App leftApplicationTerm rightApplicationTerm
-        )
-      ) (parseTerm (take rightestApplicationIndex str))
-    ) (parseTerm (drop (rightestApplicationIndex + 1) str))
-  ) (findRightestApplicationIndex str)
 
 parseTerm :: String -> Maybe Term
+parseTerm (')':x) = parseTerm x
 parseTerm ('\\' : rest) = 
-  let maybeNextTermIndex = findIndex rest '.' in
-    case maybeNextTermIndex of
+  let nextIndex = findIndex rest '.' in
+    case nextIndex of
       Nothing -> Nothing
       Just nextTermIndex ->
         let varNames = filter (not . null) (splitBy (take nextTermIndex rest) ' ') in
-          if null varNames then
-            Nothing
-          else if null (tail varNames) then
-            maybe Nothing (
-              \parsedNextTerm ->
-                Just (
-                  Abs 
-                  (head varNames)
-                  parsedNextTerm
-                )
-            ) (parseTerm (drop (nextTermIndex + 1) rest))
-          else
-            maybe 
-              Nothing 
-              (\x -> 
-                Just (
-                  Abs 
-                  (head varNames) 
-                  x
-                )
-              ) 
-              (parseTerm 
-                ('\\' : 
-                  (
-                    (
-                      joinWith 
-                      (tail varNames) 
-                      ' '
-                    ) 
-                    ++ 
-                    (
-                      drop 
-                      (nextTermIndex) 
-                      rest
-                    )
-                  )
-                )
-              )
-
-parseTerm (')':x) = parseTerm x
-
+          case varNames of
+            [] -> Nothing
+            [varName] -> parseTerm (drop (nextTermIndex + 1) rest) >>= (\parsedNextTerm -> Just (Abs varName parsedNextTerm))
+            _ -> parseTerm ('\\' :  foldl (\left right -> left ++ [' '] ++ right) [] (tail varNames) ++ drop nextTermIndex rest) >>= (\x -> Just (Abs (head varNames) x))
 parseTerm x = 
-  let normalizedText = normalizeString (trim x) in
+  let normalizedText = normalize (removeExtraSpaces x) in
     maybe (
       if (not (null normalizedText)) && head normalizedText == '(' then 
         parseTerm (tail normalizedText)
@@ -319,12 +245,18 @@ parseTerm x =
       if null normalizedText then Nothing
       else if head normalizedText == '\\' then parseTerm normalizedText
       else if isDigit (head normalizedText) then
-        parseNextDigitTerm (dropTrailingBrackets normalizedText)
+        maybe Nothing (\x -> Just (Nmb x)) (parseNextDigit (dropTrailingBrackets normalizedText)) 
       else
         Just (parseVarTerm (dropTrailingBrackets normalizedText))
     ) 
     (\_ ->
-      maybe Nothing Just (parseApplication normalizedText)
+      findAppIndexRight normalizedText >>= (\rightestApplicationIndex -> 
+        parseTerm (take rightestApplicationIndex normalizedText) >>= (\leftApplicationTerm -> 
+          parseTerm (drop (rightestApplicationIndex + 1) normalizedText) >>= (\rightApplicationTerm -> 
+            Just (App leftApplicationTerm rightApplicationTerm)
+          )
+        )
+      )
     ) 
     (findNextApplicationIndex normalizedText)
 
